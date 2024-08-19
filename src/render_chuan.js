@@ -227,6 +227,10 @@ renderXlsx = function(sheet, payload){
   }
 }
 
+renderPdf = function(doc, payload) {
+
+};
+
 const projectId = "chuan";
 
-module.exports = {handlePayload, renderXlsx, projectId};
+module.exports = {handlePayload, renderXlsx, renderPdf, projectId};

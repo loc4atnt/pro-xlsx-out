@@ -1,5 +1,32 @@
+const pdf = require('pdfjs');
+const fs = require('fs');
+const path = require('path');
+const moment = require('moment');
+
 const borderLine = require('./borderLine');
 const {convertMsToDate} = require('./util');
+
+///////////////////////////////////////////////
+const PDF_CellConfig = {
+    alignment: 'center',
+    textAlign: 'center',
+};
+const PDF_PrimaryColor = 0x0388fc;
+const PDF_PrimaryContentColor = 0xffffff;
+const PDF_SecondaryColor = 0x005bab;
+const PDF_SecondaryContentColor = 0xffffff;
+const PDF_MediumColor = 0x616161;
+const PDF_LightColor = 0xd6d6d6;
+const PDF_ContentColor = 0x000000;
+const PDF_ContentBgColor = 0xffffff;
+//
+const PDF_FontSize = 12;
+const PDF_Font = new pdf.Font(fs.readFileSync(path.join(__dirname, './fonts/times.ttf')));
+//
+const PDF_ReportTitleFontSize = 24;
+//
+const PDF_DateTimeFormat = 'HH:mm:ss DD/MM/YYYY';
+///////////////////////////////////////////////
 
 handlePayload = function(newPayload, myPayload){
   let exportPayload = newPayload;
@@ -165,6 +192,137 @@ renderXlsx = function(sheet, payload){
   }
 }
 
+// return doc
+renderPdf = function(payload) {
+    const { heading='', title='', unit='', data=[], merge_mark:mergeMark=[], header=[], note='' } = payload;
+
+    const fromTs = data[0][0];
+    const toTs = data[payload.data.length - 1][0];
+    const fromStr = moment(fromTs).format(PDF_DateTimeFormat);
+    const toStr = moment(toTs).format(PDF_DateTimeFormat);
+
+    const dataColAmount = header.length - 1;
+
+    // calculate data avg
+    const dataLen = data.length;
+    let dataAvg = new Array(dataColAmount).fill(0);
+    for (let i = 0; i < data.length; i++) {
+        for (let j = 1; j < dataColAmount + 1; j++) {
+            dataAvg[j-1] += data[i][j];
+        }
+    }
+    for (let i = 0; i < dataColAmount; i++) {
+        dataAvg[i] = Math.round(dataAvg[i] / dataLen * 100) / 100;
+    }
+
+    const doc = new pdf.Document({
+        font: PDF_Font,
+        fontSize: PDF_FontSize,
+        padding: 10,
+        width: (10+10) + Math.max((120+50*dataColAmount), (120+200+120+120)),
+        properties: {
+            title: 'Huynh Duc Nham',
+            author: 'Huynh Duc Nham',
+        }
+        });
+    
+    // title align center having primary color
+    doc.text(heading, {textAlign: 'center', color: PDF_PrimaryColor, fontSize: PDF_ReportTitleFontSize});
+
+    // gap between title and info table
+    doc.cell('', {minHeight: 20});
+
+    // info table
+    const infoTable = doc.table({
+        widths: [120, 200, 120, 120],
+        borderWidth: 1,
+        borderColor: PDF_MediumColor,
+    });
+    const infoRow1 = infoTable.row();
+    infoRow1.cell("Đối tượng", {paddingLeft: 6, color: PDF_PrimaryContentColor, backgroundColor: PDF_PrimaryColor});
+    infoRow1.cell(title, {color: PDF_ContentColor, backgroundColor: PDF_ContentBgColor});
+    infoRow1.cell("Thời gian thu thập", {colspan: 2, textAlign: 'center', alignment: 'center', backgroundColor: PDF_SecondaryColor, color: PDF_SecondaryContentColor});
+    //
+    const infoRow2 = infoTable.row();
+    infoRow2.cell("Đ/v dữ liệu", {paddingLeft: 6, color: PDF_PrimaryContentColor, backgroundColor: PDF_PrimaryColor})
+    infoRow2.cell(unit, {color: PDF_ContentColor, backgroundColor: PDF_ContentBgColor})
+    infoRow2.cell("Từ", {textAlign: 'center', alignment: 'center', backgroundColor: PDF_PrimaryColor, color: PDF_PrimaryContentColor})
+    infoRow2.cell("Đến", {textAlign: 'center', alignment: 'center', backgroundColor: PDF_PrimaryColor, color: PDF_PrimaryContentColor});
+    //
+    const infoRow3 = infoTable.row();
+    infoRow3.cell("Ghi chú", {paddingLeft: 6, color: PDF_PrimaryContentColor, backgroundColor: PDF_PrimaryColor})
+    infoRow3.cell(note, {color: PDF_ContentColor, backgroundColor: PDF_ContentBgColor})
+    infoRow3.cell(fromStr, {textAlign: 'center', alignment: 'center', color: PDF_ContentColor, backgroundColor: PDF_ContentBgColor})
+    infoRow3.cell(toStr, {textAlign: 'center', alignment: 'center', color: PDF_ContentColor, backgroundColor: PDF_ContentBgColor});
+
+    // gap between info table and content
+    doc.cell('', {minHeight: 24});
+
+    // render something onto the document
+    const table = doc.table({
+        widths: [120, ...(new Array(dataColAmount).fill(50))],
+        borderWidth: 1,
+        borderColor: PDF_MediumColor,
+    })
+
+    const aboveHeader = table.header({
+
+    });
+    for (let mergeHeader of mergeMark) {
+        const text = mergeHeader?.text || '';
+        const span = mergeHeader?.len || 1;
+        aboveHeader.cell(text, {
+            alignment: 'center',
+            textAlign: 'center',
+            colspan: span,
+            ...(mergeHeader ? {backgroundColor: PDF_PrimaryColor} : {}),
+        });
+    }
+
+    const belowHeader = table.header({
+
+    });
+    for (let headerItem of header) {
+        belowHeader.cell(headerItem, {
+            ...PDF_CellConfig,
+        });
+    };
+
+    for (let dataItem of data) {
+        const [time, ...dataCols] = dataItem;
+        //
+        const row = table.row({
+            ...PDF_CellConfig,
+        });
+        // first col is date time
+        row.cell(moment(time).format(PDF_DateTimeFormat), {
+            ...PDF_CellConfig,
+        });
+        // other cols are data
+        for (let dataCol of dataCols) {
+            row.cell(dataCol.toString(), {
+                ...PDF_CellConfig,
+            });
+        }
+    }
+
+    const avgRow = table.row({
+        ...PDF_CellConfig,
+        backgroundColor: PDF_LightColor,
+    });
+    avgRow.cell("Trung bình:", {
+        ...PDF_CellConfig,
+    });
+    // avg row
+    for (let avgData of dataAvg) {
+        avgRow.cell(avgData.toString(), {
+            ...PDF_CellConfig,
+        });      
+    }
+
+    return doc;
+};
+
 const projectId = "thingsboard";
 
-module.exports = {handlePayload, renderXlsx, projectId};
+module.exports = {handlePayload, renderXlsx, renderPdf, projectId};

@@ -1,5 +1,6 @@
+const fs = require('fs');
 const ExcelJS = require('exceljs');
-const {handlePayload, renderXlsx} = require('./render');
+const {handlePayload, renderXlsx, renderPdf} = require('./render');
 
 // Extract columns and rows
 // Filter data & header
@@ -77,8 +78,17 @@ function exportReportAsXlsx(payload, projectId, isExportFile=false) {
     return buffer;
 }
 
+function exportReportAsPdf(payload, projectId, isExportFile=false) {
+    const handledPayload = handleRawPayload(payload, projectId);
+    const doc = renderPdf(handledPayload, projectId);
+    if (isExportFile) doc.pipe(fs.createWriteStream('hihi.pdf'));
+    let buffer = doc.asBuffer();
+    return buffer;
+}
+
 module.exports = {
     exportReportAsXlsx,
+    exportReportAsPdf,
 }
 
 /////////////////////////////////////////////////////////

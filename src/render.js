@@ -11,4 +11,9 @@ renderXlsx = function(sheet, payload, projectId){
   else if (projectId === chuan.projectId) return chuan.renderXlsx(sheet, payload);
 }
 
-module.exports = {handlePayload, renderXlsx};
+renderPdf = function(payload, projectId){
+  if (projectId === tb.projectId) return tb.renderPdf(payload);
+  else if (projectId === chuan.projectId) return chuan.renderPdf(payload);
+}
+
+module.exports = {handlePayload, renderXlsx, renderPdf};
