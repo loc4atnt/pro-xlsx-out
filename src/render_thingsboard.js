@@ -21,7 +21,7 @@ const PDF_ContentColor = 0x000000;
 const PDF_ContentBgColor = 0xffffff;
 //
 const PDF_FontSize = 12;
-const PDF_Font = new pdf.Font(fs.readFileSync(path.join(__dirname, './fonts/times.ttf')));
+const PDF_Font = new pdf.Font(fs.readFileSync(path.join(__dirname, './fonts/Times.otf')));
 //
 const PDF_ReportTitleFontSize = 24;
 //
@@ -216,7 +216,7 @@ renderPdf = function(payload) {
     }
 
     const doc = new pdf.Document({
-        font: PDF_Font,
+        font: PDF_Font,//require('pdfjs/font/Times'),
         fontSize: PDF_FontSize,
         padding: 10,
         width: (10+10) + Math.max((120+50*dataColAmount), (120+200+120+120)),
@@ -236,6 +236,7 @@ renderPdf = function(payload) {
     const infoTable = doc.table({
         widths: [120, 200, 120, 120],
         borderWidth: 1,
+	padding: 5,
         borderColor: PDF_MediumColor,
     });
     const infoRow1 = infoTable.row();
@@ -262,6 +263,7 @@ renderPdf = function(payload) {
     const table = doc.table({
         widths: [120, ...(new Array(dataColAmount).fill(50))],
         borderWidth: 1,
+	    padding: 5,
         borderColor: PDF_MediumColor,
     })
 
