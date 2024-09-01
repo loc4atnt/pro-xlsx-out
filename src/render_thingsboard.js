@@ -267,18 +267,20 @@ renderPdf = function(payload) {
         borderColor: PDF_MediumColor,
     })
 
-    const aboveHeader = table.header({
+    if (mergeMark.some((m) => m)) {
+        const aboveHeader = table.header({
 
-    });
-    for (let mergeHeader of mergeMark) {
-        const text = mergeHeader?.text || '';
-        const span = mergeHeader?.len || 1;
-        aboveHeader.cell(text, {
-            alignment: 'center',
-            textAlign: 'center',
-            colspan: span,
-            ...(mergeHeader ? {backgroundColor: PDF_PrimaryColor} : {}),
         });
+        for (let mergeHeader of mergeMark) {
+            const text = mergeHeader?.text || '';
+            const span = mergeHeader?.len || 1;
+            aboveHeader.cell(text, {
+                alignment: 'center',
+                textAlign: 'center',
+                colspan: span,
+                ...(mergeHeader ? {backgroundColor: PDF_PrimaryColor} : {}),
+            });
+        }
     }
 
     const belowHeader = table.header({
