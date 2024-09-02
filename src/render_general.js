@@ -10,7 +10,7 @@ const TotalFunctionsLabel = {
     average: 'Trung bình',
     sum: 'Tổng',
 };
-const calDataTotal = (data, totalFunc) => {
+const calDataTotal = (data, dataColAmount, totalFunc) => {
     const dataLen = data.length;
     let dataTotal = new Array(dataColAmount).fill(0);
 
@@ -233,7 +233,7 @@ renderPdf = function(payload) {
     const dataColAmount = header.length - 1;
 
     // calculate data total
-    const dataTotal = calDataTotal(data, totalFunc);
+    const dataTotal = calDataTotal(data, dataColAmount, totalFunc);
 
     const doc = new pdf.Document({
         font: PDF_Font,//require('pdfjs/font/Times'),
