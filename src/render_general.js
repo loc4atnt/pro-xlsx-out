@@ -6,6 +6,29 @@ const moment = require('moment');
 const borderLine = require('./borderLine');
 const {convertMsToDate} = require('./util');
 
+const TotalFunctionsLabel = {
+    average: 'Trung bình',
+    sum: 'Tổng',
+};
+const calDataTotal = (data, totalFunc) => {
+    const dataLen = data.length;
+    let dataTotal = new Array(dataColAmount).fill(0);
+
+    if (totalFunc === 'average' || totalFunc === 'sum') {
+        // sum data
+        for (let i = 0; i < data.length; i++) {
+            for (let j = 1; j < dataColAmount + 1; j++) {
+                dataTotal[j-1] += data[i][j];
+            }
+        }
+    }
+    if (totalFunc === 'average') {
+        // average data
+        for (let i = 0; i < dataColAmount; i++) {
+            dataTotal[i] = Math.round(dataTotal[i] / dataLen * 100) / 100;
+        }
+    }
+};
 ///////////////////////////////////////////////
 const PDF_CellConfig = {
     alignment: 'center',
@@ -34,6 +57,7 @@ handlePayload = function(newPayload, myPayload){
   exportPayload["unit"] = (myPayload.unit || '');
   exportPayload["fromTs"] = (myPayload.fromTs);
   exportPayload["toTs"] = (myPayload.toTs);
+  exportPayload["totalFunc"] = (myPayload.totalFunc || 'average');
   return exportPayload;
 }
 
@@ -101,8 +125,8 @@ renderXlsx = function(sheet, payload){
       size: 10
   };
   if (payload.data != undefined && payload.data.length > 0) {
-      let fromTs = payload.data[0][0];
-      let toTs = payload.data[payload.data.length - 1][0];
+      let fromTs = payload.fromTs || payload.data[0][0];
+      let toTs = payload.toTs || payload.data[payload.data.length - 1][0];
       sheet.getCell('D5').value = convertMsToDate(fromTs);
       sheet.getCell('E5').value = convertMsToDate(toTs);
   }
@@ -128,12 +152,12 @@ renderXlsx = function(sheet, payload){
   let myColumns = payload.header.map((ele) => {
       let spaceArr = new Array(spaceID++).fill(' ');
       let spaceIDStr = spaceArr.join('');
-      return { name: (spaceIDStr + ele + spaceIDStr), totalsRowFunction: 'average', filterButton: false }
+      return { name: (spaceIDStr + ele + spaceIDStr), totalsRowFunction: payload.totalFunc || "average", filterButton: false }
   });
   if (myColumns.length > 0) {
       myColumns[0].totalsRowFunction = 'none';
       myColumns[0].filterButton = true;
-      myColumns[0].totalsRowLabel = 'Trung bình:';
+      myColumns[0].totalsRowLabel = TotalFunctionsLabel[payload.totalFunc || "average"]+':';
   }
   let myRows = payload.data.map((ele) => {
       return [...ele];
@@ -147,7 +171,7 @@ renderXlsx = function(sheet, payload){
           totalsRow: true,
           style: payload.table_style || {
               theme: 'TableStyleMedium2',
-              showColumnStripes: false
+              showColumnStripes: false,
           },
           columns: myColumns,
           rows: myRows,
@@ -157,45 +181,47 @@ renderXlsx = function(sheet, payload){
   sheet.getRow(String.fromCharCode(reportTableIndex.charCodeAt(1)-1)).alignment = sheet.getRow(String.fromCharCode(reportTableIndex.charCodeAt(1))).alignment = { vertical: 'middle', horizontal: 'center' };
 
   // Handle merge header
-  let firstCol = reportTableIndex.charCodeAt(0);
-  let cIter = firstCol-('A'.charCodeAt(0));
-  let aboveRowIdxAsStr = String.fromCharCode(reportTableIndex.charCodeAt(1)-1);
-  payload.merge_mark.forEach((m) => {
-      if (m) {
-          let rCell = `${int2ColStr(cIter)}${aboveRowIdxAsStr}`;
-        //   console.log("Merge: ", `${rCell}:${int2ColStr(cIter + m.len - 1)}${aboveRowIdxAsStr}`);
-          sheet.mergeCells(`${rCell}:${int2ColStr(cIter + m.len - 1)}${aboveRowIdxAsStr}`);
-        //   console.log("=========== merged ==========");
-          sheet.getCell(rCell).fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FF4189B3' },
-          };
-          sheet.getCell(rCell).value = m.text;
-          sheet.getCell(rCell).font = {
-              color: { argb: 'FF16365C' },
-              alignment: { vertical: 'middle', horizontal: 'center' },
-              bold: true
-          };
-          sheet.getCell(rCell).border = { top: borderLine.outline, left: borderLine.outline, right: borderLine.outline, bottom: borderLine.outline };
-          cIter += m.len;
-      }
-      else {
+  if ((payload.merge_mark || []).some((m) => m)) {
+    let firstCol = reportTableIndex.charCodeAt(0);
+    let cIter = firstCol-('A'.charCodeAt(0));
+    let aboveRowIdxAsStr = String.fromCharCode(reportTableIndex.charCodeAt(1)-1);
+    payload.merge_mark.forEach((m) => {
+        if (m) {
+            let rCell = `${int2ColStr(cIter)}${aboveRowIdxAsStr}`;
+            //   console.log("Merge: ", `${rCell}:${int2ColStr(cIter + m.len - 1)}${aboveRowIdxAsStr}`);
+            sheet.mergeCells(`${rCell}:${int2ColStr(cIter + m.len - 1)}${aboveRowIdxAsStr}`);
+            //   console.log("=========== merged ==========");
+            sheet.getCell(rCell).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF4189B3' },
+            };
+            sheet.getCell(rCell).value = m.text;
+            sheet.getCell(rCell).font = {
+                color: { argb: 'FF16365C' },
+                alignment: { vertical: 'middle', horizontal: 'center' },
+                bold: true
+            };
+            sheet.getCell(rCell).border = { top: borderLine.outline, left: borderLine.outline, right: borderLine.outline, bottom: borderLine.outline };
+            cIter += m.len;
+        }
+        else {
+            cIter++;
+        }
+    });
+    //
+    cIter = firstCol-('A'.charCodeAt(0));
+    for (var i = 0; i < payload.header.length; i++){
+        let rCell = `${int2ColStr(cIter)}${reportTableIndex[1]}`;
+        sheet.getCell(rCell).border = { left: borderLine.outline, right: borderLine.outline, top: borderLine.outline, bottom: borderLine.outline };
         cIter++;
-      }
-  });
-  //
-  cIter = firstCol-('A'.charCodeAt(0));
-  for (var i = 0; i < payload.header.length; i++){
-    let rCell = `${int2ColStr(cIter)}${reportTableIndex[1]}`;
-    sheet.getCell(rCell).border = { left: borderLine.outline, right: borderLine.outline, top: borderLine.outline, bottom: borderLine.outline };
-    cIter++;
+    }
   }
 }
 
 // return doc
 renderPdf = function(payload) {
-    const { heading='', title='', unit='', data=[], merge_mark:mergeMark=[], header=[], note='', table_style: style={}, fromTs: tableFromTs, toTs: tableToTs } = payload;
+    const { heading='', title='', unit='', data=[], merge_mark:mergeMark=[], header=[], note='', table_style: style={}, fromTs: tableFromTs, toTs: tableToTs, totalFunc='average' } = payload;
     const { dataCell={} } = style;
     const { width: dataCellWidth=50 } = dataCell;
 
@@ -206,17 +232,8 @@ renderPdf = function(payload) {
 
     const dataColAmount = header.length - 1;
 
-    // calculate data avg
-    const dataLen = data.length;
-    let dataAvg = new Array(dataColAmount).fill(0);
-    for (let i = 0; i < data.length; i++) {
-        for (let j = 1; j < dataColAmount + 1; j++) {
-            dataAvg[j-1] += data[i][j];
-        }
-    }
-    for (let i = 0; i < dataColAmount; i++) {
-        dataAvg[i] = Math.round(dataAvg[i] / dataLen * 100) / 100;
-    }
+    // calculate data total
+    const dataTotal = calDataTotal(data, totalFunc);
 
     const doc = new pdf.Document({
         font: PDF_Font,//require('pdfjs/font/Times'),
@@ -317,11 +334,11 @@ renderPdf = function(payload) {
         ...PDF_CellConfig,
         backgroundColor: PDF_LightColor,
     });
-    avgRow.cell("Trung bình:", {
+    avgRow.cell(TotalFunctionsLabel[totalFunc]+':', {
         ...PDF_CellConfig,
     });
     // avg row
-    for (let avgData of dataAvg) {
+    for (let avgData of dataTotal) {
         avgRow.cell(avgData.toString(), {
             ...PDF_CellConfig,
         });      
