@@ -195,12 +195,12 @@ renderXlsx = function(sheet, payload){
 
 // return doc
 renderPdf = function(payload) {
-    const { heading='', title='', unit='', data=[], merge_mark:mergeMark=[], header=[], note='', table_style: style={} } = payload;
+    const { heading='', title='', unit='', data=[], merge_mark:mergeMark=[], header=[], note='', table_style: style={}, fromTs: tableFromTs, toTs: tableToTs } = payload;
     const { dataCell={} } = style;
     const { width: dataCellWidth=50 } = dataCell;
 
-    const fromTs = fromTs || data[0][0];
-    const toTs = toTs || data[payload.data.length - 1][0];
+    const fromTs = tableFromTs || data[0][0];
+    const toTs = tableToTs || data[payload.data.length - 1][0];
     const fromStr = moment(fromTs).format(PDF_DateTimeFormat);
     const toStr = moment(toTs).format(PDF_DateTimeFormat);
 
