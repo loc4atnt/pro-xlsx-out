@@ -32,6 +32,8 @@ handlePayload = function(newPayload, myPayload){
   let exportPayload = newPayload;
   exportPayload["title"] = (myPayload.title || '');
   exportPayload["unit"] = (myPayload.unit || '');
+  exportPayload["fromTs"] = (myPayload.fromTs);
+  exportPayload["toTs"] = (myPayload.toTs);
   return exportPayload;
 }
 
@@ -197,8 +199,8 @@ renderPdf = function(payload) {
     const { dataCell={} } = style;
     const { width: dataCellWidth=50 } = dataCell;
 
-    const fromTs = data[0][0];
-    const toTs = data[payload.data.length - 1][0];
+    const fromTs = fromTs || data[0][0];
+    const toTs = toTs || data[payload.data.length - 1][0];
     const fromStr = moment(fromTs).format(PDF_DateTimeFormat);
     const toStr = moment(toTs).format(PDF_DateTimeFormat);
 
