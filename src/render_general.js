@@ -193,7 +193,7 @@ renderXlsx = function(sheet, payload){
 
 // return doc
 renderPdf = function(payload) {
-    const { heading='', title='', unit='', data=[], merge_mark:mergeMark=[], header=[], note='', style={} } = payload;
+    const { heading='', title='', unit='', data=[], merge_mark:mergeMark=[], header=[], note='', table_style: style={} } = payload;
     const { dataCell={} } = style;
     const { width: dataCellWidth=50 } = dataCell;
 
