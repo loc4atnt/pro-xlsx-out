@@ -32,6 +32,8 @@ handlePayload = function(newPayload, myPayload){
   let exportPayload = newPayload;
   exportPayload["title"] = (myPayload.title || '');
   exportPayload["unit"] = (myPayload.unit || '');
+  exportPayload["fromTs"] = (myPayload.fromTs);
+  exportPayload["toTs"] = (myPayload.toTs);
   return exportPayload;
 }
 
@@ -100,8 +102,8 @@ renderXlsx = function(sheet, payload){
       size: 10
   };
   if (payload.data != undefined && payload.data.length > 0) {
-      let fromTs = payload.data[0][0];
-      let toTs = payload.data[payload.data.length - 1][0];
+      let fromTs = payload.fromTs || payload.data[0]?.[0] || 0;
+      let toTs = payload.toTs || payload.data[payload.data.length - 1]?.[0] || 0;
       sheet.getCell('D5').value = convertMsToDate(fromTs);
       sheet.getCell('E5').value = convertMsToDate(toTs);
   }
@@ -194,10 +196,10 @@ renderXlsx = function(sheet, payload){
 
 // return doc
 renderPdf = function(payload) {
-    const { heading='', title='', unit='', data=[], merge_mark:mergeMark=[], header=[], note='' } = payload;
+    const { heading='', title='', unit='', data=[], merge_mark:mergeMark=[], header=[], note='', fromTs: pFromTs, toTs: pToTs, } = payload;
 
-    const fromTs = data[0][0];
-    const toTs = data[payload.data.length - 1][0];
+    const fromTs = pFromTs || data[0]?.[0] || 0;
+    const toTs = pToTs || data[payload.data.length - 1]?.[0] || 0;
     const fromStr = moment(fromTs).format(PDF_DateTimeFormat);
     const toStr = moment(toTs).format(PDF_DateTimeFormat);
 

@@ -125,8 +125,8 @@ renderXlsx = function(sheet, payload){
       size: 10
   };
   if (payload.data != undefined && payload.data.length > 0) {
-      let fromTs = payload.fromTs || payload.data[0][0];
-      let toTs = payload.toTs || payload.data[payload.data.length - 1][0];
+      let fromTs = payload.fromTs || payload.data[0]?.[0] || 0;
+      let toTs = payload.toTs || payload.data[payload.data.length - 1]?.[0] || 0;
       sheet.getCell('D5').value = convertMsToDate(fromTs);
       sheet.getCell('E5').value = convertMsToDate(toTs);
   }
@@ -225,8 +225,8 @@ renderPdf = function(payload) {
     const { dataCell={} } = style;
     const { width: dataCellWidth=50 } = dataCell;
 
-    const fromTs = tableFromTs || data[0][0];
-    const toTs = tableToTs || data[payload.data.length - 1][0];
+    const fromTs = tableFromTs || data[0]?.[0] || 0;
+    const toTs = tableToTs || data[payload.data.length - 1]?.[0] || 0;
     const fromStr = moment(fromTs).format(PDF_DateTimeFormat);
     const toStr = moment(toTs).format(PDF_DateTimeFormat);
 
