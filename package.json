@@ -1,6 +1,6 @@
 {
   "name": "pro-xlsx-out",
-  "version": "1.0.14",
+  "version": "1.0.19",
   "description": "",
   "main": "./src/xlsx-out.js",
   "scripts": {

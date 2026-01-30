@@ -1,6 +1,18 @@
-const fs = require('fs');
 const ExcelJS = require('exceljs');
 const {handlePayload, renderXlsx, renderPdf} = require('./render');
+
+// Check if running in Node.js environment
+const isNode = typeof window === 'undefined' && typeof process !== 'undefined' && process.versions && process.versions.node;
+
+// Only require fs in Node.js environment
+let fs = null;
+if (isNode) {
+    try {
+        fs = require('fs');
+    } catch (e) {
+        // fs not available
+    }
+}
 
 // Extract columns and rows
 // Filter data & header
@@ -43,13 +55,13 @@ function handleRawPayload(myPayload, projectId = undefined) {
     return newPayload;
 }
 
-function exportReportAsXlsx(payload, projectId, isExportFile=false) {
+async function exportReportAsXlsx(payload, projectId, isExportFile=false) {
     const handledPayload = handleRawPayload(payload, projectId);
 
     const workbook = new ExcelJS.Workbook();
 
     workbook.title = handledPayload.heading;
-    workbook.creator = 'Phenikaa MaaS';
+    workbook.creator = 'Nham Huynh Duc';
     workbook.created = new Date();
     workbook.properties.date1904 = true;// Set workbook dates to 1904 date system
 
@@ -73,15 +85,54 @@ function exportReportAsXlsx(payload, projectId, isExportFile=false) {
 
     renderXlsx(sheet, handledPayload, projectId);
 
-    if (isExportFile) workbook.xlsx.writeFile("hihi.xlsx");
-    let buffer = workbook.xlsx.writeBuffer();// write to a new buffer
+    // Write to buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Export file (Node.js only)
+    if (isExportFile) {
+        if (isNode && fs) {
+            await workbook.xlsx.writeFile("report.xlsx");
+        } else if (typeof window !== 'undefined') {
+            // Browser: trigger download
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'report.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    }
+
     return buffer;
 }
 
 function exportReportAsPdf(payload, projectId, isExportFile=false) {
     const handledPayload = handleRawPayload(payload, projectId);
     const doc = renderPdf(handledPayload, projectId);
-    if (isExportFile) doc.pipe(fs.createWriteStream('hihi.pdf'));
+    
+    // Export file
+    if (isExportFile) {
+        if (isNode && fs) {
+            // Node.js: write to file
+            doc.pipe(fs.createWriteStream('report.pdf'));
+        } else if (typeof window !== 'undefined') {
+            // Browser: trigger download
+            const buffer = doc.asBuffer();
+            const blob = new Blob([buffer], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'report.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    }
+    
     let buffer = doc.asBuffer();
     return buffer;
 }
@@ -268,7 +319,6 @@ module.exports = {
 //         [2, 4, 2, 4, 5],
 //         [4, 2, 1, 2, 9],
 //         [4, 2, 1, 2, 9],
-//         ["Tổng", "undefined", "undefined", 22, "undefined"],
 //     ],
 //     "from": "2022-08-18T11:13:05.291Z",
 //     "to": "2022-08-18T21:13:05.291Z",
@@ -277,7 +327,4 @@ module.exports = {
 //         {"key": "Biển số xe", "value": "21344"},
 //     ],
 // };
-// const rawppll3 = {};
-// const ppll3 = test(rawppll3);
-// console.log(ppll3);
-// exportReportAsXlsx(ppll5, "chuan", true);
+// exportReportAsXlsx(ppll4, "thingsboard", true);

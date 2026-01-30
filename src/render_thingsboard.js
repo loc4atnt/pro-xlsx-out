@@ -1,10 +1,23 @@
 const pdf = require('pdfjs');
-const fs = require('fs');
-const path = require('path');
 const moment = require('moment');
 
 const borderLine = require('./borderLine');
 const {convertMsToDate} = require('./util');
+
+// Check if running in Node.js environment
+const isNode = typeof window === 'undefined' && typeof process !== 'undefined' && process.versions && process.versions.node;
+
+// Only require fs and path in Node.js environment
+let fs = null;
+let path = null;
+if (isNode) {
+    try {
+        fs = require('fs');
+        path = require('path');
+    } catch (e) {
+        // fs/path not available
+    }
+}
 
 ///////////////////////////////////////////////
 const PDF_CellConfig = {
@@ -21,7 +34,15 @@ const PDF_ContentColor = 0x000000;
 const PDF_ContentBgColor = 0xffffff;
 //
 const PDF_FontSize = 12;
-const PDF_Font = new pdf.Font(fs.readFileSync(path.join(__dirname, './fonts/Times.otf')));
+// Load custom font only in Node.js environment (browser: use default font)
+let PDF_Font = null;
+if (isNode && fs && path) {
+    try {
+        PDF_Font = new pdf.Font(fs.readFileSync(path.join(__dirname, './fonts/Times.otf')));
+    } catch (e) {
+        // Font loading failed, will use default
+    }
+}
 //
 const PDF_ReportTitleFontSize = 24;
 //
@@ -157,6 +178,44 @@ renderXlsx = function(sheet, payload){
 
   sheet.getRow(String.fromCharCode(reportTableIndex.charCodeAt(1)-1)).alignment = sheet.getRow(String.fromCharCode(reportTableIndex.charCodeAt(1))).alignment = { vertical: 'middle', horizontal: 'center' };
 
+  // Add vertical borders to data table cells
+  if (myColumns.length > 0 && myRows.length > 0) {
+      let startRow = parseInt(reportTableIndex.substring(1));
+      let startCol = reportTableIndex.charCodeAt(0) - 'A'.charCodeAt(0);
+      let endRow = startRow + myRows.length + 1; // +1 for header row
+      let endCol = startCol + myColumns.length - 1;
+      
+      // Apply borders to all cells in the data table
+      for (let row = startRow; row <= endRow; row++) {
+          for (let col = startCol; col <= endCol; col++) {
+              let cellAddress = `${int2ColStr(col)}${row}`;
+              let cell = sheet.getCell(cellAddress);
+              
+              // Apply vertical borders (left and right)
+              cell.border = {
+                  left: borderLine.inline,
+                  right: borderLine.inline,
+                  top: borderLine.inline,
+                  bottom: borderLine.inline
+              };
+              
+              // Apply outline borders to the outer edges
+              if (col === startCol) {
+                  cell.border.left = borderLine.outline;
+              }
+              if (col === endCol) {
+                  cell.border.right = borderLine.outline;
+              }
+              if (row === startRow) {
+                  cell.border.top = borderLine.outline;
+              }
+              if (row === endRow) {
+                  cell.border.bottom = borderLine.outline;
+              }
+          }
+      }
+  }
+
   // Handle merge header
   let firstCol = reportTableIndex.charCodeAt(0);
   let cIter = firstCol-('A'.charCodeAt(0));
@@ -217,8 +276,7 @@ renderPdf = function(payload) {
         dataAvg[i] = Math.round(dataAvg[i] / dataLen * 100) / 100;
     }
 
-    const doc = new pdf.Document({
-        font: PDF_Font,//require('pdfjs/font/Times'),
+    const docOptions = {
         fontSize: PDF_FontSize,
         padding: 10,
         width: (10+10) + Math.max((120+50*dataColAmount), (120+200+120+120)),
@@ -226,7 +284,12 @@ renderPdf = function(payload) {
             title: 'Huynh Duc Nham',
             author: 'Huynh Duc Nham',
         }
-        });
+    };
+    // Only set custom font if available (Node.js environment)
+    if (PDF_Font) {
+        docOptions.font = PDF_Font;
+    }
+    const doc = new pdf.Document(docOptions);
     
     // title align center having primary color
     doc.text(heading, {textAlign: 'center', color: PDF_PrimaryColor, fontSize: PDF_ReportTitleFontSize});

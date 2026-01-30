@@ -1,10 +1,23 @@
 const pdf = require('pdfjs');
-const fs = require('fs');
-const path = require('path');
 const moment = require('moment');
 
 const borderLine = require('./borderLine');
 const {convertMsToDate} = require('./util');
+
+// Check if running in Node.js environment
+const isNode = typeof window === 'undefined' && typeof process !== 'undefined' && process.versions && process.versions.node;
+
+// Only require fs and path in Node.js environment
+let fs = null;
+let path = null;
+if (isNode) {
+    try {
+        fs = require('fs');
+        path = require('path');
+    } catch (e) {
+        // fs/path not available
+    }
+}
 
 const TotalFunctionsLabel = {
     average: 'Trung bình',
@@ -44,7 +57,15 @@ const PDF_ContentColor = 0x000000;
 const PDF_ContentBgColor = 0xffffff;
 //
 const PDF_FontSize = 12;
-const PDF_Font = new pdf.Font(fs.readFileSync(path.join(__dirname, './fonts/Times.otf')));
+// Load custom font only in Node.js environment (browser: use default font)
+let PDF_Font = null;
+if (isNode && fs && path) {
+    try {
+        PDF_Font = new pdf.Font(fs.readFileSync(path.join(__dirname, './fonts/Times.otf')));
+    } catch (e) {
+        // Font loading failed, will use default
+    }
+}
 //
 const PDF_ReportTitleFontSize = 24;
 //
@@ -235,8 +256,7 @@ renderPdf = function(payload) {
     // calculate data total
     const dataTotal = calDataTotal(data, dataColAmount, totalFunc);
 
-    const doc = new pdf.Document({
-        font: PDF_Font,//require('pdfjs/font/Times'),
+    const docOptions = {
         fontSize: PDF_FontSize,
         padding: 10,
         width: (10+10) + Math.max((120+dataCellWidth*dataColAmount), (120+200+120+120)),
@@ -244,7 +264,12 @@ renderPdf = function(payload) {
             title: 'Huynh Duc Nham',
             author: 'Huynh Duc Nham',
         }
-        });
+    };
+    // Only set custom font if available (Node.js environment)
+    if (PDF_Font) {
+        docOptions.font = PDF_Font;
+    }
+    const doc = new pdf.Document(docOptions);
     
     // title align center having primary color
     doc.text(heading, {textAlign: 'center', color: PDF_PrimaryColor, fontSize: PDF_ReportTitleFontSize});
